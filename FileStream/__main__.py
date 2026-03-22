@@ -22,7 +22,7 @@ logging.getLogger("aiohttp").setLevel(logging.ERROR)
 logging.getLogger("pyrogram").setLevel(logging.ERROR)
 logging.getLogger("aiohttp.web").setLevel(logging.ERROR)
 
-server = web.AppRunner(web_server())
+server = web.AppRunner(web_server(), access_log=None)
 
 loop = asyncio.get_event_loop()
 
@@ -49,13 +49,22 @@ async def start_services():
     print()
     print("--------------------- Initializing Web Server ---------------------")
     await server.setup()
-    await web.TCPSite(server, Server.BIND_ADDRESS, Server.PORT).start()
+    await web.TCPSite(
+        server,
+        Server.BIND_ADDRESS,
+        Server.PORT,
+        backlog=Server.TCP_BACKLOG,
+    ).start()
     print("------------------------------ DONE ------------------------------")
     print()
     print("------------------------- Service Started -------------------------")
     print("                        bot =>> {}".format(bot_info.first_name))
     if bot_info.dc_id:
         print("                        DC ID =>> {}".format(str(bot_info.dc_id)))
+    print("                    Workers =>> {}".format(Telegram.WORKERS))
+    print("               Stream Chunk =>> {} bytes".format(Server.STREAM_CHUNK_SIZE))
+    print("            Stream Prefetch =>> {}".format(Server.STREAM_PREFETCH))
+    print("              Cache TTL =>> {} sec".format(Server.FILE_ID_CACHE_TTL))
     print(" URL =>> {}".format(Server.URL))
     print("------------------------------------------------------------------")
     await idle()

@@ -6,13 +6,22 @@ from FileStream.server.exceptions import FIleNotFound
 from FileStream.utils.bot_utils import gen_linkx, verify_user
 from FileStream.config import Telegram
 from FileStream.utils.database import Database
-from FileStream.utils.translation import LANG, BUTTON
+from FileStream.utils.translation import LANG, BUTTON, EMOJI, MEDIA, styled_button
 from pyrogram import filters, Client
+from pyrogram.enums import ButtonStyle
 from pyrogram.types import InlineKeyboardMarkup, InlineKeyboardButton, Message
 from pyrogram.enums.parse_mode import ParseMode
 import asyncio
 
 db = Database(Telegram.DATABASE_URL, Telegram.SESSION_NAME)
+
+
+def get_start_media() -> str:
+    return Telegram.START_PIC or MEDIA.PROJECTS_PHOTO
+
+
+def get_help_media() -> str:
+    return Telegram.START_PIC or MEDIA.HELP_PHOTO_URL
 
 @FileStream.on_message(filters.command('start') & filters.private)
 async def start(bot: Client, message: Message):
@@ -21,20 +30,12 @@ async def start(bot: Client, message: Message):
     usr_cmd = message.text.split("_")[-1]
 
     if usr_cmd == "/start":
-        if Telegram.START_PIC:
-            await message.reply_photo(
-                photo=Telegram.START_PIC,
-                caption=LANG.START_TEXT.format(message.from_user.mention, FileStream.username),
-                parse_mode=ParseMode.HTML,
-                reply_markup=BUTTON.START_BUTTONS
-            )
-        else:
-            await message.reply_text(
-                text=LANG.START_TEXT.format(message.from_user.mention, FileStream.username),
-                parse_mode=ParseMode.HTML,
-                disable_web_page_preview=True,
-                reply_markup=BUTTON.START_BUTTONS
-            )
+        await message.reply_photo(
+            photo=get_start_media(),
+            caption=LANG.START_TEXT.format(message.from_user.mention, FileStream.username),
+            parse_mode=ParseMode.HTML,
+            reply_markup=BUTTON.START_BUTTONS
+        )
     else:
         if "stream_" in message.text:
             try:
@@ -52,9 +53,9 @@ async def start(bot: Client, message: Message):
                     )
 
             except FIleNotFound as e:
-                await message.reply_text("File Not Found")
+                await message.reply_text(LANG.FILE_NOT_FOUND_TEXT, parse_mode=ParseMode.HTML)
             except Exception as e:
-                await message.reply_text("Something Went Wrong")
+                await message.reply_text(LANG.SOMETHING_WENT_WRONG, parse_mode=ParseMode.HTML)
                 logging.error(e)
 
         elif "file_" in message.text:
@@ -73,50 +74,35 @@ async def start(bot: Client, message: Message):
                         pass
 
             except FIleNotFound as e:
-                await message.reply_text("**File Not Found**")
+                await message.reply_text(LANG.FILE_NOT_FOUND_TEXT, parse_mode=ParseMode.HTML)
             except Exception as e:
-                await message.reply_text("Something Went Wrong")
+                await message.reply_text(LANG.SOMETHING_WENT_WRONG, parse_mode=ParseMode.HTML)
                 logging.error(e)
 
         else:
-            await message.reply_text(f"**Invalid Command**")
+            await message.reply_text(f"{EMOJI.invalid} <b>Invalid command.</b>", parse_mode=ParseMode.HTML)
 
 @FileStream.on_message(filters.private & filters.command(["about"]))
 async def start(bot, message):
     if not await verify_user(bot, message):
         return
-    if Telegram.START_PIC:
-        await message.reply_photo(
-            photo=Telegram.START_PIC,
-            caption=LANG.ABOUT_TEXT.format(FileStream.fname, __version__),
-            parse_mode=ParseMode.HTML,
-            reply_markup=BUTTON.ABOUT_BUTTONS
-        )
-    else:
-        await message.reply_text(
-            text=LANG.ABOUT_TEXT.format(FileStream.fname, __version__),
-            disable_web_page_preview=True,
-            reply_markup=BUTTON.ABOUT_BUTTONS
-        )
+    await message.reply_photo(
+        photo=get_start_media(),
+        caption=LANG.ABOUT_TEXT.format(FileStream.fname, __version__),
+        parse_mode=ParseMode.HTML,
+        reply_markup=BUTTON.ABOUT_BUTTONS
+    )
 
 @FileStream.on_message((filters.command('help')) & filters.private)
 async def help_handler(bot, message):
     if not await verify_user(bot, message):
         return
-    if Telegram.START_PIC:
-        await message.reply_photo(
-            photo=Telegram.START_PIC,
-            caption=LANG.HELP_TEXT.format(Telegram.OWNER_ID),
-            parse_mode=ParseMode.HTML,
-            reply_markup=BUTTON.HELP_BUTTONS
-        )
-    else:
-        await message.reply_text(
-            text=LANG.HELP_TEXT.format(Telegram.OWNER_ID),
-            parse_mode=ParseMode.HTML,
-            disable_web_page_preview=True,
-            reply_markup=BUTTON.HELP_BUTTONS
-        )
+    await message.reply_photo(
+        photo=get_help_media(),
+        caption=LANG.HELP_TEXT.format(Telegram.OWNER_ID),
+        parse_mode=ParseMode.HTML,
+        reply_markup=BUTTON.HELP_BUTTONS
+    )
 
 # ---------------------------------------------------------------------------------------------------
 
@@ -128,22 +114,29 @@ async def my_files(bot: Client, message: Message):
 
     file_list = []
     async for x in user_files:
-        file_list.append([InlineKeyboardButton(x["file_name"], callback_data=f"myfile_{x['_id']}_{1}")])
+        file_list.append([
+            styled_button(
+                x["file_name"],
+                callback_data=f"myfile_{x['_id']}_{1}",
+                icon_markup=EMOJI.view,
+                style=ButtonStyle.DEFAULT,
+            )
+        ])
     if total_files > 10:
         file_list.append(
             [
-                InlineKeyboardButton("◄", callback_data="N/A"),
-                InlineKeyboardButton(f"1/{math.ceil(total_files / 10)}", callback_data="N/A"),
-                InlineKeyboardButton("►", callback_data="userfiles_2")
+                styled_button("◄", callback_data="N/A", icon_markup=EMOJI.round, style=ButtonStyle.DEFAULT),
+                styled_button(f"1/{math.ceil(total_files / 10)}", callback_data="N/A", icon_markup=EMOJI.status, style=ButtonStyle.DEFAULT),
+                styled_button("►", callback_data="userfiles_2", icon_markup=EMOJI.round, style=ButtonStyle.DEFAULT)
             ],
         )
     if not file_list:
         file_list.append(
-            [InlineKeyboardButton("ᴇᴍᴘᴛʏ", callback_data="N/A")],
+            [styled_button("Eᴍᴘᴛʏ", callback_data="N/A", icon_markup=EMOJI.empty, style=ButtonStyle.DEFAULT)],
         )
-    file_list.append([InlineKeyboardButton("ᴄʟᴏsᴇ", callback_data="close")])
+    file_list.append([styled_button("Cʟᴏsᴇ", callback_data="close", icon_markup=EMOJI.cancel, style=ButtonStyle.DANGER)])
     await message.reply_photo(photo=Telegram.FILE_PIC,
-                              caption="Total files: {}".format(total_files),
+                              caption=f"{EMOJI.stats} <b>Total files:</b> <code>{total_files}</code>",
+                              parse_mode=ParseMode.HTML,
                               reply_markup=InlineKeyboardMarkup(file_list))
-
 
