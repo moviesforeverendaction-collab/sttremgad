@@ -152,12 +152,19 @@ PORT = 8080
 * `FILE_PIC`: To set Image at `/files` command. Defaults to pre-set image. `str`
 * `START_PIC`: To set Image at `/start` command. Defaults to pre-set image. `str`
 * `VERIFY_PIC`: To set Image at Force Sub Verification. Defaults to pre-set image. `str`
-* `WORKERS`: Number of maximum concurrent workers for handling incoming updates. Defaults to `6`. `int`
+* `WORKERS`: Number of maximum concurrent workers for handling incoming updates. Defaults to detected CPU count capped at `32`, with a floor of `8`. `int`
+* `STREAM_CHUNK_SIZE`: Telegram streaming chunk size in bytes. The code clamps it to Telegram's `1 MiB` protocol limit, so `1048576` is the maximum effective value. `int`
+* `STREAM_PREFETCH`: Number of sequential Telegram chunks to keep in flight per request. Defaults to `4`. `int`
+* `FILE_ID_CACHE_TTL`: How long cached file metadata stays in memory before cleanup. Defaults to `21600` seconds. `int`
+* `TCP_BACKLOG`: Pending TCP connection backlog for the web server. Defaults to `2048`. `int`
+* `REQUEST_MAX_SIZE`: Maximum accepted aiohttp request size. Defaults to `536870912` bytes. `int`
 * `PORT`: The port that you want your webapp to be listened to. Defaults to `8080`. `int`
 * `BIND_ADDRESS`: Your server bind adress. Defauls to `0.0.0.0`. `int`
 * `MODE`: Should be set to `secondary` if you only want to use the server for serving files. `str`
 * `NO_PORT`: (True/False) Set PORT to 80 or 443 hide port display; ignore if on Heroku. Defaults to `False`.
 * `HAS_SSL`: (can be either `True` or `False`) If you want the generated links in https format. Defaults to `False`. 
+
+For high-throughput streaming, the biggest real scaler is still adding `MULTI_TOKEN*` bot tokens or session strings so the server can spread Telegram fetches across more clients.
 
 </details>
 
@@ -195,6 +202,4 @@ PORT = 8080
 
 ---
 <h4 align='center'>© 2024 Aνιѕнкαя Pαтιℓ</h4>
-
-
 

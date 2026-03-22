@@ -1,7 +1,8 @@
 from pyrogram.errors import UserNotParticipant, FloodWait
 from pyrogram.enums.parse_mode import ParseMode
 from pyrogram.types import InlineKeyboardMarkup, InlineKeyboardButton, Message
-from FileStream.utils.translation import LANG
+from pyrogram.enums import ButtonStyle
+from FileStream.utils.translation import LANG, EMOJI, styled_button
 from FileStream.utils.database import Database
 from FileStream.utils.human_readable import humanbytes
 from FileStream.config import Telegram, Server
@@ -35,7 +36,7 @@ async def is_user_joined(bot, message: Message):
         if user.status == "BANNED":
             await message.reply_text(
                 text=LANG.BAN_TEXT.format(Telegram.OWNER_ID),
-                parse_mode=ParseMode.MARKDOWN,
+                parse_mode=ParseMode.HTML,
                 disable_web_page_preview=True
             )
             return False
@@ -44,20 +45,20 @@ async def is_user_joined(bot, message: Message):
         if Telegram.VERIFY_PIC:
             ver = await message.reply_photo(
                 photo=Telegram.VERIFY_PIC,
-                caption="<i>Jᴏɪɴ ᴍʏ ᴜᴘᴅᴀᴛᴇ ᴄʜᴀɴɴᴇʟ ᴛᴏ ᴜsᴇ ᴍᴇ 🔐</i>",
+                caption=LANG.FORCE_SUB_TEXT,
                 parse_mode=ParseMode.HTML,
                 reply_markup=InlineKeyboardMarkup(
                 [[
-                    InlineKeyboardButton("❆ Jᴏɪɴ Oᴜʀ Cʜᴀɴɴᴇʟ ❆", url=invite_link.invite_link)
+                    styled_button("Jᴏɪɴ Cʜᴀɴɴᴇʟ", url=invite_link.invite_link, icon_markup=EMOJI.verified, style=ButtonStyle.SUCCESS)
                 ]]
                 )
             )
         else:
             ver = await message.reply_text(
-                text = "<i>Jᴏɪɴ ᴍʏ ᴜᴘᴅᴀᴛᴇ ᴄʜᴀɴɴᴇʟ ᴛᴏ ᴜsᴇ ᴍᴇ 🔐</i>",
+                text=LANG.FORCE_SUB_TEXT,
                 reply_markup=InlineKeyboardMarkup(
                     [[
-                        InlineKeyboardButton("❆ Jᴏɪɴ Oᴜʀ Cʜᴀɴɴᴇʟ ❆", url=invite_link.invite_link)
+                        styled_button("Jᴏɪɴ Cʜᴀɴɴᴇʟ", url=invite_link.invite_link, icon_markup=EMOJI.verified, style=ButtonStyle.SUCCESS)
                     ]]
                 ),
                 parse_mode=ParseMode.HTML
@@ -71,7 +72,7 @@ async def is_user_joined(bot, message: Message):
         return False
     except Exception:
         await message.reply_text(
-            text = f"<i>Sᴏᴍᴇᴛʜɪɴɢ ᴡʀᴏɴɢ ᴄᴏɴᴛᴀᴄᴛ ᴍʏ ᴅᴇᴠᴇʟᴏᴘᴇʀ</i> <b><a href='https://t.me/{Telegram.UPDATES_CHANNEL}'>[ ᴄʟɪᴄᴋ ʜᴇʀᴇ ]</a></b>",
+            text=LANG.FORCE_SUB_FAIL_TEXT,
             parse_mode=ParseMode.HTML,
             disable_web_page_preview=True)
         return False
@@ -93,18 +94,27 @@ async def gen_link(_id):
         stream_text = LANG.STREAM_TEXT.format(file_name, file_size, stream_link, page_link, file_link)
         reply_markup = InlineKeyboardMarkup(
             [
-                [InlineKeyboardButton("sᴛʀᴇᴀᴍ", url=page_link), InlineKeyboardButton("ᴅᴏᴡɴʟᴏᴀᴅ", url=stream_link)],
-                [InlineKeyboardButton("ɢᴇᴛ ғɪʟᴇ", url=file_link), InlineKeyboardButton("ʀᴇᴠᴏᴋᴇ ғɪʟᴇ", callback_data=f"msgdelpvt_{_id}")],
-                [InlineKeyboardButton("ᴄʟᴏsᴇ", callback_data="close")]
+                [
+                    styled_button("Sᴛʀᴇᴀᴍ", url=page_link, icon_markup=EMOJI.view, style=ButtonStyle.PRIMARY),
+                    styled_button("Dᴏᴡɴʟᴏᴀᴅ", url=stream_link, icon_markup=EMOJI.support, style=ButtonStyle.SUCCESS),
+                ],
+                [
+                    styled_button("Gᴇᴛ Fɪʟᴇ", url=file_link, icon_markup=EMOJI.send, style=ButtonStyle.DEFAULT),
+                    styled_button("Rᴇᴠᴏᴋᴇ", callback_data=f"msgdelpvt_{_id}", icon_markup=EMOJI.delete, style=ButtonStyle.DANGER),
+                ],
+                [styled_button("Cʟᴏsᴇ", callback_data="close", icon_markup=EMOJI.cancel, style=ButtonStyle.DANGER)]
             ]
         )
     else:
         stream_text = LANG.STREAM_TEXT_X.format(file_name, file_size, stream_link, file_link)
         reply_markup = InlineKeyboardMarkup(
             [
-                [InlineKeyboardButton("ᴅᴏᴡɴʟᴏᴀᴅ", url=stream_link)],
-                [InlineKeyboardButton("ɢᴇᴛ ғɪʟᴇ", url=file_link), InlineKeyboardButton("ʀᴇᴠᴏᴋᴇ ғɪʟᴇ", callback_data=f"msgdelpvt_{_id}")],
-                [InlineKeyboardButton("ᴄʟᴏsᴇ", callback_data="close")]
+                [styled_button("Dᴏᴡɴʟᴏᴀᴅ", url=stream_link, icon_markup=EMOJI.support, style=ButtonStyle.SUCCESS)],
+                [
+                    styled_button("Gᴇᴛ Fɪʟᴇ", url=file_link, icon_markup=EMOJI.send, style=ButtonStyle.DEFAULT),
+                    styled_button("Rᴇᴠᴏᴋᴇ", callback_data=f"msgdelpvt_{_id}", icon_markup=EMOJI.delete, style=ButtonStyle.DANGER),
+                ],
+                [styled_button("Cʟᴏsᴇ", callback_data="close", icon_markup=EMOJI.cancel, style=ButtonStyle.DANGER)]
             ]
         )
     return reply_markup, stream_text
@@ -125,14 +135,17 @@ async def gen_linkx(m:Message , _id, name: list):
         stream_text= LANG.STREAM_TEXT_X.format(file_name, file_size, stream_link, page_link)
         reply_markup = InlineKeyboardMarkup(
             [
-                [InlineKeyboardButton("sᴛʀᴇᴀᴍ", url=page_link), InlineKeyboardButton("ᴅᴏᴡɴʟᴏᴀᴅ", url=stream_link)]
+                [
+                    styled_button("Sᴛʀᴇᴀᴍ", url=page_link, icon_markup=EMOJI.view, style=ButtonStyle.PRIMARY),
+                    styled_button("Dᴏᴡɴʟᴏᴀᴅ", url=stream_link, icon_markup=EMOJI.support, style=ButtonStyle.SUCCESS),
+                ]
             ]
         )
     else:
         stream_text= LANG.STREAM_TEXT_X.format(file_name, file_size, stream_link, file_link)
         reply_markup = InlineKeyboardMarkup(
             [
-                [InlineKeyboardButton("ᴅᴏᴡɴʟᴏᴀᴅ", url=stream_link)]
+                [styled_button("Dᴏᴡɴʟᴏᴀᴅ", url=stream_link, icon_markup=EMOJI.support, style=ButtonStyle.SUCCESS)]
             ]
         )
     return reply_markup, stream_text
@@ -143,7 +156,7 @@ async def is_user_banned(message):
     if await db.is_user_banned(message.from_user.id):
         await message.reply_text(
             text=LANG.BAN_TEXT.format(Telegram.OWNER_ID),
-            parse_mode=ParseMode.MARKDOWN,
+            parse_mode=ParseMode.HTML,
             disable_web_page_preview=True
         )
         return True
@@ -157,7 +170,7 @@ async def is_channel_banned(bot, message):
             chat_id=message.chat.id,
             message_id=message.id,
             reply_markup=InlineKeyboardMarkup([[
-                InlineKeyboardButton(f"ᴄʜᴀɴɴᴇʟ ɪs ʙᴀɴɴᴇᴅ", callback_data="N/A")]])
+                styled_button("Cʜᴀɴɴᴇʟ Bᴀɴɴᴇᴅ", callback_data="N/A", icon_markup=EMOJI.banned, style=ButtonStyle.DANGER)]])
         )
         return True
     return False
@@ -173,8 +186,8 @@ async def is_user_authorized(message):
 
         if not (user_id in Telegram.AUTH_USERS):
             await message.reply_text(
-                text="Yᴏᴜ ᴀʀᴇ ɴᴏᴛ ᴀᴜᴛʜᴏʀɪᴢᴇᴅ ᴛᴏ ᴜsᴇ ᴛʜɪs ʙᴏᴛ.",
-                parse_mode=ParseMode.MARKDOWN,
+                text=LANG.UNAUTHORIZED_TEXT,
+                parse_mode=ParseMode.HTML,
                 disable_web_page_preview=True
             )
             return False

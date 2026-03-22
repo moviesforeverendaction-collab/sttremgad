@@ -1,7 +1,10 @@
 import asyncio
+import contextlib
 import logging
+from collections import deque
 from typing import Dict, Union
 from FileStream.bot import work_loads
+from FileStream.config import Server
 from pyrogram import Client, utils, raw
 from .file_properties import get_file_ids
 from pyrogram.session import Session, Auth
@@ -11,7 +14,7 @@ from pyrogram.types import Message
 
 class ByteStreamer:
     def __init__(self, client: Client):
-        self.clean_timer = 30 * 60
+        self.clean_timer = Server.FILE_ID_CACHE_TTL
         self.client: Client = client
         self.cached_file_ids: Dict[str, FileId] = {}
         asyncio.create_task(self.clean_cache())
@@ -163,45 +166,80 @@ class ByteStreamer:
         media_session = await self.generate_media_session(client, file_id)
 
         current_part = 1
-
         location = await self.get_location(file_id)
+        pending_chunks = deque()
+        next_offset = offset
+        scheduled_parts = 0
 
         try:
-            r = await media_session.invoke(
-                raw.functions.upload.GetFile(
-                    location=location, offset=offset, limit=chunk_size
-                ),
-            )
-            if isinstance(r, raw.types.upload.File):
-                while True:
-                    chunk = r.bytes
-                    if not chunk:
-                        break
-                    elif part_count == 1:
-                        yield chunk[first_part_cut:last_part_cut]
-                    elif current_part == 1:
-                        yield chunk[first_part_cut:]
-                    elif current_part == part_count:
-                        yield chunk[:last_part_cut]
-                    else:
-                        yield chunk
-
-                    current_part += 1
-                    offset += chunk_size
-
-                    if current_part > part_count:
-                        break
-
-                    r = await media_session.invoke(
-                        raw.functions.upload.GetFile(
-                            location=location, offset=offset, limit=chunk_size
-                        ),
+            while scheduled_parts < min(Server.STREAM_PREFETCH, part_count):
+                pending_chunks.append(
+                    asyncio.create_task(
+                        self._get_file_chunk(media_session, location, next_offset, chunk_size)
                     )
+                )
+                next_offset += chunk_size
+                scheduled_parts += 1
+
+            while current_part <= part_count and pending_chunks:
+                response = await pending_chunks.popleft()
+
+                if scheduled_parts < part_count:
+                    pending_chunks.append(
+                        asyncio.create_task(
+                            self._get_file_chunk(media_session, location, next_offset, chunk_size)
+                        )
+                    )
+                    next_offset += chunk_size
+                    scheduled_parts += 1
+
+                if not isinstance(response, raw.types.upload.File):
+                    break
+
+                chunk = response.bytes
+                if not chunk:
+                    break
+
+                if part_count == 1:
+                    yield chunk[first_part_cut:last_part_cut]
+                elif current_part == 1:
+                    yield chunk[first_part_cut:]
+                elif current_part == part_count:
+                    yield chunk[:last_part_cut]
+                else:
+                    yield chunk
+
+                current_part += 1
         except (TimeoutError, AttributeError):
             pass
         finally:
+            while pending_chunks:
+                pending_chunk = pending_chunks.popleft()
+                if not pending_chunk.done():
+                    pending_chunk.cancel()
+                with contextlib.suppress(asyncio.CancelledError):
+                    await pending_chunk
             logging.debug(f"Finished yielding file with {current_part} parts.")
             work_loads[index] -= 1
+
+    @staticmethod
+    async def _get_file_chunk(
+        media_session: Session,
+        location: Union[
+            raw.types.InputPhotoFileLocation,
+            raw.types.InputDocumentFileLocation,
+            raw.types.InputPeerPhotoFileLocation,
+        ],
+        offset: int,
+        chunk_size: int,
+    ):
+        return await media_session.invoke(
+            raw.functions.upload.GetFile(
+                location=location,
+                offset=offset,
+                limit=chunk_size,
+            ),
+        )
 
     
     async def clean_cache(self) -> None:
